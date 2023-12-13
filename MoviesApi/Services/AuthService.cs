@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MoviesApi.Helper;
+using NuGet.Common;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -63,6 +64,32 @@ namespace MoviesApi.Services
                 Username = user.UserName
             };
         }
+
+        public async Task<AuthModel> GetTokenAsync(TokenRequestModel model)
+        {
+            var authmodel = new AuthModel();
+            var user =await _userManager.FindByEmailAsync(model.Email);
+            if (user is null || !await _userManager.CheckPasswordAsync(user,model.Password))
+            {
+                authmodel.Message = "Email Or pasword is wrong";
+                return authmodel;
+
+            }
+            var jwtSecurityToken =await CreateJwtToken(user);
+            var roleList = await _userManager.GetRolesAsync(user);
+            authmodel.IsAuthenticated = true;
+            authmodel.ExpiresOn = jwtSecurityToken.ValidTo;
+            authmodel.Email = user.Email;
+            authmodel.Username=user.UserName;
+            authmodel.Roles = roleList.ToList();
+            authmodel.Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
+
+            return authmodel;
+
+
+
+        }
+
         private async Task<JwtSecurityToken> CreateJwtToken(ApplicationUser user)
         {
             var userClaims = await _userManager.GetClaimsAsync(user);
@@ -94,5 +121,19 @@ namespace MoviesApi.Services
 
             return jwtSecurityToken;
         }
+
+        public async Task<string> AddRoleToUserasync(AsignRoleModel model)
+        {
+            var user = await _userManager.FindByIdAsync(model.UserId);
+            if (user == null || !await _roleManager.RoleExistsAsync(model.RoleName))
+                return  "User ID Or Role Is not Found";
+            if (await _userManager.IsInRoleAsync(user, model.RoleName))
+                return "user is already inthis role";
+            var result =await _userManager.AddToRoleAsync(user, model.RoleName);
+
+            return result.Succeeded ? string.Empty : "somthing went erorr";
+
+        }
+
     }
 }

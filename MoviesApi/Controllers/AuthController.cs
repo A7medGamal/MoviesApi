@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using MoviesApi.Services;
 
 namespace MoviesApi.Controllers
@@ -25,6 +26,32 @@ namespace MoviesApi.Controllers
 
             if (!result.IsAuthenticated)
                 return BadRequest(result.Message);
+
+            return Ok(result);
+        }
+        [HttpPost("Token")]
+        public async Task<IActionResult> GetTokenAsync([FromBody] TokenRequestModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _authService.GetTokenAsync(model);
+
+            if (!result.IsAuthenticated)
+                return BadRequest(result.Message);
+
+            return Ok(result);
+        }
+        [HttpPost("addrole")]
+        public async Task<IActionResult> AddRoleToUser([FromBody] AsignRoleModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _authService.AddRoleToUserasync(model);
+
+            if (!string.IsNullOrEmpty(result))
+                return BadRequest(result);
 
             return Ok(result);
         }

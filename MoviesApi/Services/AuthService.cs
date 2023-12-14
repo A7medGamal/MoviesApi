@@ -6,6 +6,7 @@ using NuGet.Common;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Security.Cryptography;
 
 namespace MoviesApi.Services
 {
@@ -57,7 +58,8 @@ namespace MoviesApi.Services
             return new AuthModel
             {
                 Email = user.Email,
-                ExpiresOn = jwtSecurityToken.ValidTo,
+                //
+                //ExpiresOn = jwtSecurityToken.ValidTo,
                 IsAuthenticated = true,
                 Roles = new List<string> { "User" },
                 Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken),
@@ -78,12 +80,26 @@ namespace MoviesApi.Services
             var jwtSecurityToken =await CreateJwtToken(user);
             var roleList = await _userManager.GetRolesAsync(user);
             authmodel.IsAuthenticated = true;
-            authmodel.ExpiresOn = jwtSecurityToken.ValidTo;
+            //authmodel.ExpiresOn = jwtSecurityToken.ValidTo;
             authmodel.Email = user.Email;
             authmodel.Username=user.UserName;
             authmodel.Roles = roleList.ToList();
             authmodel.Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
+            if(user.RefreshTokens.Any(t=>t.IsActive))
+            {
+                var activRefeshtoken=user.RefreshTokens.FirstOrDefault(t=>t.IsActive);
+                authmodel.RefreshToken = activRefeshtoken.Token;
+                authmodel.RefreshTokenExpirsOn = activRefeshtoken.ExpiresOn;
+            }
+            else
+            {
+                var refrshToken = GenerateRefreshToken();
+                authmodel.RefreshToken = refrshToken.Token;
+                authmodel.RefreshTokenExpirsOn = refrshToken.ExpiresOn;
+                user.RefreshTokens.Add(refrshToken);
+                await _userManager.UpdateAsync(user);
 
+            }
             return authmodel;
 
 
@@ -133,6 +149,18 @@ namespace MoviesApi.Services
 
             return result.Succeeded ? string.Empty : "somthing went erorr";
 
+        }
+        private RefreshToken GenerateRefreshToken()
+        {
+            var randoNumber = new byte[32];
+            using var Generator = new RNGCryptoServiceProvider();
+            Generator.GetBytes(randoNumber);
+            return new RefreshToken
+            {
+                Token = Convert.ToBase64String(randoNumber),
+                ExpiresOn = DateTime.UtcNow.AddDays(10),
+                CreatedOn = DateTime.UtcNow
+            };
         }
 
     }

@@ -55,5 +55,15 @@ namespace MoviesApi.Controllers
 
             return Ok(result);
         }
+        private void SetRefreshTokenInCookies(string refreshtoken,DateTime expires )
+        {
+            var Cookiesoption = new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = expires
+
+            };
+            Response.Cookies.Append("refreshtoken", refreshtoken, Cookiesoption);
+        }
     }
 }

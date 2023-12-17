@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using MoviesApi.Services;
+using System.Net;
 
 namespace MoviesApi.Controllers
 {
@@ -39,6 +40,10 @@ namespace MoviesApi.Controllers
 
             if (!result.IsAuthenticated)
                 return BadRequest(result.Message);
+            if (!string.IsNullOrEmpty(result.RefreshToken))
+            {
+                SetRefreshTokenInCookies(result.RefreshToken, result.RefreshTokenExpirsOn);
+            }
 
             return Ok(result);
         }
@@ -54,6 +59,17 @@ namespace MoviesApi.Controllers
                 return BadRequest(result);
 
             return Ok(result);
+        }
+        [HttpGet("refreshtoken")]
+        public async Task<IActionResult> refreshtoken()
+        {
+            var refreshtoken = Request.Cookies["refreshtoken"];
+            var result =await _authService.RefreshTokenAsync(refreshtoken);
+            if (!result.IsAuthenticated)
+                return BadRequest(result);
+            SetRefreshTokenInCookies(result.RefreshToken, result.RefreshTokenExpirsOn);
+            return Ok(result);
+
         }
         private void SetRefreshTokenInCookies(string refreshtoken,DateTime expires )
         {

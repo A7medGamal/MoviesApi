@@ -7,6 +7,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Security.Cryptography;
+using NuGet.Versioning;
+using Microsoft.EntityFrameworkCore;
 
 namespace MoviesApi.Services
 {
@@ -149,6 +151,45 @@ namespace MoviesApi.Services
 
             return result.Succeeded ? string.Empty : "somthing went erorr";
 
+        }
+        public async Task<AuthModel> RefreshTokenAsync(string token)
+        {
+            var authmodel = new AuthModel();
+            var user =await _userManager.Users.FirstOrDefaultAsync(u=>u.RefreshTokens.Any(t => t.Token == token));
+            if (user == null)
+            {
+                authmodel.IsAuthenticated = false;
+                authmodel.Message = "invaled token";
+                return authmodel;
+
+            }
+            var refreshToken =user.RefreshTokens.Single(t=> t.Token == token);
+            if (!refreshToken.IsActive)
+            {
+                authmodel.IsAuthenticated = false;
+                authmodel.Message = "inactive token";
+                return authmodel;
+            }
+
+            refreshToken.RevokedOn= DateTime.UtcNow;
+            var newRefreshToken = GenerateRefreshToken();
+            user.RefreshTokens.Add(newRefreshToken);
+            await _userManager.UpdateAsync(user);
+
+            var jwtToken =await CreateJwtToken(user);
+            authmodel.IsAuthenticated = true;
+           
+            authmodel.Token=new JwtSecurityTokenHandler().WriteToken(jwtToken);
+            authmodel.Email = user.Email;
+            authmodel.Username = user.UserName;
+            authmodel.RefreshToken = newRefreshToken.Token;
+            var roles = await _userManager.GetRolesAsync(user);
+            authmodel.Roles = roles.ToList();
+            authmodel.IsAuthenticated = true;
+            authmodel.RefreshTokenExpirsOn = newRefreshToken.ExpiresOn;
+
+
+            return authmodel;
         }
         private RefreshToken GenerateRefreshToken()
         {

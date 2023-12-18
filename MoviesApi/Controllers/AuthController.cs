@@ -27,7 +27,7 @@ namespace MoviesApi.Controllers
 
             if (!result.IsAuthenticated)
                 return BadRequest(result.Message);
-
+            SetRefreshTokenInCookies(result.RefreshToken, result.RefreshTokenExpirsOn);
             return Ok(result);
         }
         [HttpPost("Token")]
@@ -69,6 +69,18 @@ namespace MoviesApi.Controllers
                 return BadRequest(result);
             SetRefreshTokenInCookies(result.RefreshToken, result.RefreshTokenExpirsOn);
             return Ok(result);
+
+        }
+        [HttpPost("revoke-token")]
+        public async Task<IActionResult> RevokeToken([FromBody] RevokeToken model)
+        {
+            var token =model.Token ?? Request.Cookies["refreshtoken"];
+            if (string.IsNullOrEmpty(token))
+                return BadRequest("token is required");
+            var result =await _authService.RevokeTokenAsync(token);
+            if (!result)
+                return BadRequest("token is invalid");
+            return Ok();
 
         }
         private void SetRefreshTokenInCookies(string refreshtoken,DateTime expires )

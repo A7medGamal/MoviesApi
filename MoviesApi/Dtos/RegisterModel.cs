@@ -1,4 +1,4 @@
-﻿namespace MoviesApi.Model
+﻿namespace MoviesApi.Dtos
 {
     public class RegisterModel
     {
